@@ -1,0 +1,14 @@
+cli:
+  name: petstore
+  env_prefix: PETSTORE
+  version: "0.1.0"
+
+environments:
+  production: http://petstore.swagger.io/v1
+
+resources:
+  pets:
+    methods:
+      list: "get /pets"
+      create: "post /pets"
+      show-pet-by-id: "get /pets/{petId}"

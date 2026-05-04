@@ -1,0 +1,107 @@
+# petstore
+
+A sample API for managing pets
+
+This file is the agent-facing overview of the `petstore` CLI. It explains what the tool does and how to use it well — *not* every flag of every command. For per-command details run `petstore <command> --help` or `petstore <command> --schema` (returns JSON).
+
+## Install
+
+The binary is `petstore`. Build from source or download a release.
+
+## Authentication
+
+This API does not require authentication.
+
+## Commands
+
+petstore groups operations by resource. One or two examples per group below — for the full set of commands and flags use `petstore <group> --help`.
+
+### `pets`
+
+```bash
+petstore pets create --body '{...}'    # Create a pet
+```
+
+```bash
+petstore pets list    # List all pets
+```
+
+List all commands in this group: `petstore pets --help`
+
+
+## Output and parsing
+
+All output is JSON by default and goes to stdout. Errors go to stderr as a single-line JSON object — stdout stays clean for piping.
+
+```bash
+petstore <cmd> --jq <path>          # extract fields without jq installed (GJSON syntax)
+petstore <cmd> -o yaml              # change format: json (default), yaml, table, compact, raw, pretty
+petstore <cmd> --dry-run            # print the HTTP request without sending it
+petstore <cmd> --schema             # JSON schema of inputs and outputs for that command
+```
+
+GJSON path examples:
+- `--jq id` — scalar
+- `--jq items.#.id` — every id from an array
+- `--jq "items.#(active==true)#"` — filter array by condition
+
+## Exit codes
+
+Branch on `$?` rather than parsing stderr:
+
+| Code | Meaning |
+|------|---------|
+| 0 | success |
+| 1 | unknown error |
+| 2 | auth failed (401 / 403) |
+| 3 | not found (404) |
+| 4 | validation error (400 / 422) |
+| 5 | rate limited (429) |
+| 6 | server error (5xx) |
+| 7 | network error |
+
+Error JSON shape on stderr:
+```json
+{"error":true,"code":"not_found","status":404,"message":"...","exit_code":3}
+```
+
+## Common workflows
+
+### List then fetch one
+```bash
+ID=$(petstore <group> list --jq "items.0.id")
+petstore <group> get --id "$ID"
+```
+
+### Capture a created ID
+```bash
+ID=$(petstore <group> create [flags] --jq id)
+```
+
+### Safe destructive call
+```bash
+petstore <group> delete --id X --dry-run    # inspect first
+petstore <group> delete --id X              # exit 0 = deleted, 3 = not found
+```
+
+### Branch on exit code
+```bash
+petstore <cmd> [flags]
+case $? in
+  0) : success ;;
+  2) echo "fix credentials" ;;
+  3) echo "not found, skip" ;;
+  5) sleep 10 ; retry ;;
+esac
+```
+
+## Discovering more
+
+```bash
+petstore --help                              # top-level groups
+petstore <group> --help                      # commands in a group
+petstore <group> <cmd> --help                # flags + description
+petstore <group> <cmd> --schema              # JSON schema
+petstore agent-instructions                  # this file, embedded in the binary
+```
+
